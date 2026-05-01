@@ -3,28 +3,29 @@
 
 #define SP 1
 
-void drawPacman(int dir, float x, float y, int& ciclo);
-void pc0(int dir, float x, float y);
-void pc1(int dir, float x, float y);
-void pc2(int dir, float x, float y);
-void pc3(int dir, float x, float y);
-void map();
+void drawPacman(int dir, int& ciclo);
+void pc0(int dir);
+void pc1(int dir);
+void pc2(int dir);
+void pc3(int dir);
+void mostraSchermataIniziale();
+void mostraSchermataVittoria();
+void mostraSchermataPausa();
+void mostraMappa();
 void spawnFrutti();
 char fruit();
+void resetLabirinto();
 void input(int& dirT, bool& run);
-void direction(int& dir, int dirT, float& x, float& y, float raggio);
+void direction(int& dir, int dirT, float raggio);
 int whatIs(float x, float y);
-bool centratoX(float x);
-bool centratoY(float x);
-void punteggio(float x, float y);
+bool centratoX();
+bool centratoY();
+void punteggio();
 void muro(int riga, int col);
 void pallino(int riga, int col);
 void pera(int riga, int col);
 void mela(int riga, int col);
 void arancia(int riga, int col);
-void schermataIniziale();
-void schermataVittoria();
-void pausa();
 bool win();
 
 //Global
@@ -37,6 +38,8 @@ sf::RenderWindow finestra(
 sf::Texture texPacman0, texPacman1, texPacman2, texPacman3, texMela, texPera, texArancia;
 sf::Font arial("arial.ttf");
 sf::Text text(arial);
+
+int stato = 0; // 0 = schermata iniziale, 1 = gioco, 2 = pausa, 3 = vittoria
 
 int punti = 0;
 
@@ -66,6 +69,28 @@ char labirinto[RIGHE][COLONNE] =
     {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 };
 
+const char labirintoOriginale[RIGHE][COLONNE] =
+{
+    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+    {1,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,1},
+    {1,2,1,1,1,2,1,2,1,2,1,2,1,1,1,2,1,2,1},
+    {1,2,2,2,2,2,1,2,2,2,1,2,2,2,2,2,1,2,1},
+    {1,1,1,1,1,2,1,1,1,0,1,1,1,2,1,1,1,2,1},
+    {0,0,0,0,1,2,1,0,0,0,0,0,1,2,1,0,0,0,0},
+    {1,1,1,1,1,2,1,0,0,0,0,0,1,2,1,1,1,1,1},
+    {1,2,2,2,2,2,2,0,0,0,0,0,2,2,2,2,2,2,1},
+    {1,1,1,1,1,2,1,0,0,0,0,0,1,2,1,1,1,1,1},
+    {0,0,0,0,1,2,1,0,0,0,0,0,1,2,1,0,0,0,0},
+    {1,1,1,1,1,2,1,1,1,0,1,1,1,2,1,1,1,2,1},
+    {1,2,2,2,2,2,1,2,2,2,1,2,2,2,2,2,1,2,1},
+    {1,2,1,1,1,2,1,2,1,2,1,2,1,1,1,2,1,2,1},
+    {1,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,1},
+    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
+};
+
+float x = 380;
+float y = 300;
+
 int main() {
     srand(time(NULL));
 
@@ -77,9 +102,6 @@ int main() {
     texMela.loadFromFile("texture/mela.png");
     texPera.loadFromFile("texture/pera.png");
     texArancia.loadFromFile("texture/arancia.png");
-
-    float x = 380;
-    float y = 300;
 
     int dir = 0;
     int dirT = 0;
@@ -97,8 +119,8 @@ int main() {
     {
         float tTrascorso = clock.getElapsedTime().asSeconds();
 
-        if (tTrascorso < timestep) 
-            continue; 
+        if (tTrascorso < timestep)
+            continue;
 
         clock.restart();
 
@@ -106,23 +128,22 @@ int main() {
 
         finestra.clear(sf::Color::Blue);
 
-        if (run) {
-            if (!vinto) {
-                map();
-                spawnFrutti();
-                direction(dir, dirT, x, y, 15);
-                punteggio(x, y);
-                drawPacman(dir, x, y, ciclo);
-
-                if (win()) vinto = true;
-            }
-            else {
-                schermataVittoria(); // SOLO DISEGNO
-            }
+        if (stato == 0) {
+            mostraSchermataIniziale();
         }
-        else {
-            if (start) schermataIniziale();
-            else pausa();
+        else if (stato == 1) {
+            mostraMappa();
+            spawnFrutti();
+            direction(dir, dirT, 15);
+            punteggio();
+            drawPacman(dir, ciclo);
+
+            if (win()) stato = 3;
+        } else if (stato == 2) {
+            mostraSchermataPausa();
+        }
+        else if (stato == 3) {
+            mostraSchermataVittoria();
         }
 
         finestra.display(); // mostra la finestra
@@ -131,7 +152,7 @@ int main() {
     return 0;
 }
 
-void schermataIniziale() {
+void mostraSchermataIniziale() {
 
     // Pannello centrale nero
     sf::RectangleShape panel;
@@ -177,7 +198,7 @@ void schermataIniziale() {
     finestra.draw(info);
 }
 
-void pausa() {
+void mostraSchermataPausa() {
     sf::RectangleShape panel({ 420.f, 220.f });
     panel.setFillColor(sf::Color(30, 30, 30, 250));
     panel.setOrigin({ 210.f, 110.f });
@@ -210,7 +231,92 @@ void pausa() {
     finestra.draw(info);
 }
 
-void map() { //Genera la mappa
+void mostraSchermataVittoria() {
+    // Pannello centrale
+    sf::RectangleShape panel;
+    panel.setSize({ 520.f, 320.f });
+    panel.setFillColor(sf::Color(20, 20, 20));
+    panel.setOrigin({ 260.f, 160.f });
+    panel.setPosition({ 380.f, 300.f });
+    finestra.draw(panel);
+
+    // ---------- PAC-MAN DECORATIVO ----------
+    int dirPacman = 3; // destra
+    int cicloFake = 0;
+    drawPacman(dirPacman, cicloFake);
+
+    // ---------- TITOLO ----------
+    sf::Text titolo(arial);
+    titolo.setString("VITTORIA!");
+    titolo.setCharacterSize(46);
+    titolo.setFillColor(sf::Color::Yellow);
+    titolo.setStyle(sf::Text::Bold);
+    sf::FloatRect r = titolo.getLocalBounds();
+    titolo.setOrigin({
+        r.position.x + r.size.x / 2.f,
+        r.position.y + r.size.y / 2.f
+        });
+    titolo.setPosition({ 380.f, 265.f });
+    finestra.draw(titolo);
+
+    // Linea decorativa
+    sf::RectangleShape line;
+    line.setSize({ 300.f, 3.f });
+    line.setFillColor(sf::Color::Yellow);
+    line.setOrigin({ 150.f, 1.5f });
+    line.setPosition({ 380.f, 290.f });
+    finestra.draw(line);
+
+    // ---------- PUNTEGGIO ----------
+    sf::Text score(arial);
+    score.setString("PUNTEGGIO: " + std::to_string(punti));
+    score.setCharacterSize(24);
+    score.setFillColor(sf::Color::White);
+    score.setStyle(sf::Text::Bold);
+    r = score.getLocalBounds();
+    score.setOrigin({
+        r.position.x + r.size.x / 2.f,
+        r.position.y + r.size.y / 2.f
+        });
+    score.setPosition({ 380.f, 325.f });
+    finestra.draw(score);
+
+    // ---------- TESTO ----------
+    sf::Text info(arial);
+    info.setString("HAI MANGIATO TUTTO");
+    info.setCharacterSize(18);
+    info.setFillColor(sf::Color(200, 200, 200));
+    r = info.getLocalBounds();
+    info.setOrigin({
+        r.position.x + r.size.x / 2.f,
+        r.position.y + r.size.y / 2.f
+        });
+    info.setPosition({ 380.f, 355.f });
+    finestra.draw(info);
+
+    // ---------- FRUTTI DECORATIVI ----------
+    mela(7, 4);
+    pera(7, 5);
+    arancia(7, 13);
+    mela(7, 14);
+
+    // ---------- SOTTOTESTO ----------
+    sf::Text sub(arial);
+    sub.setString("PREMI SPAZIO PER GIOCARE ANCORA");
+    sub.setCharacterSize(18);
+    sub.setFillColor(sf::Color(180, 180, 180));
+
+    r = sub.getLocalBounds();
+    sub.setOrigin({
+        r.position.x + r.size.x / 2.f,
+        r.position.y + r.size.y / 2.f
+        });
+
+    sub.setPosition({ 380.f, 395.f });
+    finestra.draw(sub);
+}
+
+void mostraMappa() { //Genera la mappa
     for (int riga = 0; riga < RIGHE; riga++)
     {
         for (int col = 0; col < COLONNE; col++)
@@ -241,22 +347,22 @@ void map() { //Genera la mappa
     }
 }
 
-void drawPacman(int dir, float x, float y, int& ciclo)
+void drawPacman(int dir, int& ciclo)
 {
     int slowdown = 10;
 
     int frame = (ciclo / slowdown) % 4; // 4 frame
 
-    if (frame == 0) pc0(dir, x, y);
-    else if (frame == 1) pc1(dir, x, y);
-    else if (frame == 2) pc2(dir, x, y);
-    else pc3(dir, x, y);
+    if (frame == 0) pc0(dir);
+    else if (frame == 1) pc1(dir);
+    else if (frame == 2) pc2(dir);
+    else pc3(dir);
 
     ciclo++;
     if (ciclo >= slowdown * 4) ciclo = 0;
 }
 
-void pc0(int dir, float x, float y) {
+void pc0(int dir) {
     sf::Sprite pc(texPacman0);
 
     float targetHeight = 30.f;
@@ -283,7 +389,7 @@ void pc0(int dir, float x, float y) {
     finestra.draw(pc);
 }
 
-void pc1(int dir, float x, float y) {
+void pc1(int dir) {
     sf::Sprite pc(texPacman1);
 
     float targetHeight = 30.f;
@@ -310,7 +416,7 @@ void pc1(int dir, float x, float y) {
     finestra.draw(pc);
 }
 
-void pc2(int dir, float x, float y) {
+void pc2(int dir) {
     sf::Sprite pc(texPacman2);
 
     float targetHeight = 30.f;
@@ -337,7 +443,7 @@ void pc2(int dir, float x, float y) {
     finestra.draw(pc);
 }
 
-void pc3(int dir, float x, float y) {
+void pc3(int dir) {
     sf::Sprite pc(texPacman3);
 
     float targetHeight = 30.f;
@@ -389,7 +495,7 @@ char fruit() { //spawna i frutti
 }
 
 void muro(int riga, int col) {
-    sf::RectangleShape muro({(float)dimCel, (float)dimCel});
+    sf::RectangleShape muro({ (float)dimCel, (float)dimCel });
     muro.setFillColor(sf::Color::Black);
     muro.setPosition(sf::Vector2f(col * dimCel, riga * dimCel));
     finestra.draw(muro);
@@ -448,24 +554,39 @@ void input(int& dirT, bool& run) {
             if (key == sf::Keyboard::Key::Right) dirT = 3;
 
             if (key == sf::Keyboard::Key::Escape || key == sf::Keyboard::Key::Space) {
-                run = !run;
+				if (stato == 0) stato = 1; // da schermata iniziale a gioco
+				else if (stato == 1) stato = 2; // da gioco a pausa
+				else if (stato == 2) stato = 1; // da pausa a gioco
+                else if (stato == 3) { // da vittoria a schermata iniziale
+                    resetLabirinto();
+                    x = 380;
+                    y = 300;
+                    punti = 0;
+                    stato = 0;
+                }
             }
         }
     }
 }
 
-void direction(int& dir, int dirT, float& x, float& y, float raggio) { //Muove la palla
+void direction(int& dir, int dirT, float raggio) { //Muove la palla
+    // Teletrasporto
+    if (x - raggio < 0) x = maxX - raggio;
+    else if (x + raggio > maxX) x = raggio;
+
+    if (y - raggio < 0) y = maxY - raggio;
+    else if (y + raggio > maxY) y = raggio;
 
     // Controllo se posso cambiare direzione solo se centrato sull'altro asse
-    if (dirT == 1 && centratoX(x) && whatIs(x, y - dimCel / 2 - SP) != 1) dir = 1; // su
-    if (dirT == 2 && centratoX(x) && whatIs(x, y + dimCel / 2 + SP) != 1) dir = 2; // gi 
-    if (dirT == 4 && centratoY(y) && whatIs(x - dimCel / 2 - SP, y) != 1) dir = 4; // sinistra
-    if (dirT == 3 && centratoY(y) && whatIs(x + dimCel / 2 + SP, y) != 1) dir = 3; // destra
+    if (dirT == 1 && centratoX() && whatIs(x, y - dimCel / 2 - SP) != 1) dir = 1; // su
+    if (dirT == 2 && centratoX() && whatIs(x, y + dimCel / 2 + SP) != 1) dir = 2; // gi 
+    if (dirT == 4 && centratoY() && whatIs(x - dimCel / 2 - SP, y) != 1) dir = 4; // sinistra
+    if (dirT == 3 && centratoY() && whatIs(x + dimCel / 2 + SP, y) != 1) dir = 3; // destra
 
     // Accentraento
-    if ((dir == 1 || dir == 2) && !centratoX(x))
+    if ((dir == 1 || dir == 2) && !centratoX())
         x = round((x - dimCel / 2) / dimCel) * dimCel + dimCel / 2;
-    if ((dir == 3 || dir == 4) && !centratoY(y))
+    if ((dir == 3 || dir == 4) && !centratoY())
         y = round((y - dimCel / 2) / dimCel) * dimCel + dimCel / 2;
 
     // Movimento
@@ -474,23 +595,20 @@ void direction(int& dir, int dirT, float& x, float& y, float raggio) { //Muove l
     if (dir == 4 && whatIs(x - dimCel / 2 - SP, y) != 1) x -= SP; // sinistra
     if (dir == 3 && whatIs(x + dimCel / 2 + SP - 1, y) != 1) x += SP; // destra
 
-    // Teletrasporto
-    if (x - raggio < 0) x = maxX - raggio;
-    else if (x + raggio > maxX) x = raggio;
-
-    if (y - raggio < 0) y = maxY - raggio;
-    else if (y + raggio > maxY) y = raggio;
 }
 
 int whatIs(float x, float y) {
     int col = (int)(x / dimCel);
     int riga = (int)(y / dimCel);
-    int isIt = labirinto[riga][col];
 
-    return isIt;
+    // Se fuori dai bordi, considera come corridoio libero
+    if (col < 0 || col >= COLONNE || riga < 0 || riga >= RIGHE)
+        return 0;
+
+    return labirinto[riga][col];
 }
 
-void punteggio(float x, float y) {
+void punteggio() {
     int col = (int)(x / dimCel);
     int riga = (int)(y / dimCel);
     int isIt = labirinto[riga][col];
@@ -505,101 +623,22 @@ void punteggio(float x, float y) {
     }
 }
 
-bool centratoX(float x) {
+bool centratoX() {
     bool centrato = false;
     if (((int)(x - dimCel / 2) % (int)dimCel) == 0) centrato = true;
     return centrato;
 }
 
-bool centratoY(float y) {
+bool centratoY() {
     bool centrato = false;
     if (((int)(y - dimCel / 2) % (int)dimCel) == 0) centrato = true;
     return centrato;
 }
 
-void schermataVittoria() {
-        // Pannello centrale
-        sf::RectangleShape panel;
-        panel.setSize({ 520.f, 320.f });
-        panel.setFillColor(sf::Color(20, 20, 20));
-        panel.setOrigin({ 260.f, 160.f });
-        panel.setPosition({ 380.f, 300.f });
-        finestra.draw(panel);
-
-        // ---------- PAC-MAN DECORATIVO ----------
-        int dirPacman = 3; // destra
-        int cicloFake = 0;
-        drawPacman(dirPacman, 380.f, 220.f, cicloFake);
-
-        // ---------- TITOLO ----------
-        sf::Text titolo(arial);
-        titolo.setString("VITTORIA!");
-        titolo.setCharacterSize(46);
-        titolo.setFillColor(sf::Color::Yellow);
-        titolo.setStyle(sf::Text::Bold);
-        sf::FloatRect r = titolo.getLocalBounds();
-        titolo.setOrigin({
-            r.position.x + r.size.x / 2.f,
-            r.position.y + r.size.y / 2.f
-            });
-        titolo.setPosition({ 380.f, 265.f });
-        finestra.draw(titolo);
-
-        // Linea decorativa
-        sf::RectangleShape line;
-        line.setSize({ 300.f, 3.f });
-        line.setFillColor(sf::Color::Yellow);
-        line.setOrigin({ 150.f, 1.5f });
-        line.setPosition({ 380.f, 290.f });
-        finestra.draw(line);
-
-        // ---------- PUNTEGGIO ----------
-        sf::Text score(arial);
-        score.setString("PUNTEGGIO: " + std::to_string(punti));
-        score.setCharacterSize(24);
-        score.setFillColor(sf::Color::White);
-        score.setStyle(sf::Text::Bold);
-        r = score.getLocalBounds();
-        score.setOrigin({
-            r.position.x + r.size.x / 2.f,
-            r.position.y + r.size.y / 2.f
-            });
-        score.setPosition({ 380.f, 325.f });
-        finestra.draw(score);
-
-        // ---------- TESTO ----------
-        sf::Text info(arial);
-        info.setString("HAI MANGIATO TUTTO");
-        info.setCharacterSize(18);
-        info.setFillColor(sf::Color(200, 200, 200));
-        r = info.getLocalBounds();
-        info.setOrigin({
-            r.position.x + r.size.x / 2.f,
-            r.position.y + r.size.y / 2.f
-            });
-        info.setPosition({ 380.f, 355.f });
-        finestra.draw(info);
-
-        // ---------- FRUTTI DECORATIVI ----------
-        mela(7, 4);
-        pera(7, 5);
-        arancia(7, 13);
-        mela(7, 14);
-
-        // ---------- SOTTOTESTO ----------
-        sf::Text sub(arial);
-        sub.setString("PREMI SPAZIO PER GIOCARE ANCORA");
-        sub.setCharacterSize(18);
-        sub.setFillColor(sf::Color(180, 180, 180));
-
-        r = sub.getLocalBounds();
-        sub.setOrigin({
-            r.position.x + r.size.x / 2.f,
-            r.position.y + r.size.y / 2.f
-            });
-
-        sub.setPosition({ 380.f, 395.f });
-        finestra.draw(sub);
+void resetLabirinto() {
+    for (int r = 0; r < RIGHE; r++)
+        for (int c = 0; c < COLONNE; c++)
+            labirinto[r][c] = labirintoOriginale[r][c];
 }
 
 bool win() {
@@ -609,11 +648,9 @@ bool win() {
                 labirinto[r][c] == 'a' ||
                 labirinto[r][c] == 'b' ||
                 labirinto[r][c] == 'c') {
-                return false; 
+                return false;
             }
         }
     }
     return true;
 }
-
-
